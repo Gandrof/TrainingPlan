@@ -53,7 +53,29 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--B);outline-offs
 .wt{display:flex;align-items:center;gap:6px;margin-left:auto}
 .wt input{width:88px;font:600 16px -apple-system,system-ui,sans-serif;min-height:48px;padding:0 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);text-align:right;-webkit-appearance:none}
 .wt span{color:var(--mut);font-size:14px}
-.prev{width:100%;color:var(--mut);font-size:14px;text-align:right}
+.prev{width:100%;color:var(--mut);font-size:14px}
+.prev b{color:var(--ink)}
+.log{display:flex;flex-wrap:wrap;gap:10px;width:100%}
+.log .wt{margin-left:0}
+.savebar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:4px 0 12px}
+.savebtn{min-height:52px;padding:0 22px;border-radius:12px;border:0;background:var(--day);color:#fff;font:700 17px -apple-system,system-ui,sans-serif;cursor:pointer}
+#svmsg{color:var(--mut)}
+.streak{display:inline-flex;align-items:center;gap:8px;margin-top:12px;background:rgba(0,0,0,.25);border-radius:22px;padding:6px 14px 6px 8px;font-size:16px}
+.streak b{font-size:24px;font-weight:800;line-height:1}
+.streak svg{width:28px;height:28px;flex:none}
+.streak.off svg{opacity:.45}
+.sec{padding-top:8px;padding-bottom:24px}
+.sec h2{font-size:26px;font-weight:800;margin:16px 0 8px}
+.box{background:var(--card);border-radius:14px;padding:14px 16px;margin:10px 0}
+details.box summary{cursor:pointer;min-height:32px}
+select{font:600 16px -apple-system,system-ui,sans-serif;min-height:48px;padding:0 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:100%;max-width:420px;margin:4px 0 12px}
+.lb{display:block;font-weight:600}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--mut)}
+td.n,th.n{text-align:right;white-space:nowrap}
+.del{margin-top:10px}
 .rest{min-height:48px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:600 16px -apple-system,system-ui,sans-serif;padding:0 14px;cursor:pointer;white-space:nowrap}
 .foot{padding:4px 0 24px}
 .resetbtn{min-height:48px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 16px -apple-system,system-ui,sans-serif;padding:0 16px;cursor:pointer}
@@ -63,7 +85,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--B);outline-offs
 .timer .lbl{flex:1;font-size:15px;opacity:.85}
 .timer button{min-height:48px;min-width:60px;border-radius:12px;border:0;font:700 16px -apple-system,system-ui,sans-serif;cursor:pointer;background:var(--bg);color:var(--ink)}
 .timer.end{background:var(--A);color:#fff}
-@media(max-width:600px){.wt{margin-left:0}.prev{text-align:left}}
+@media(max-width:600px){.wt{margin-left:0}}
 @media(prefers-reduced-motion:reduce){.timer{transition:none}}
 </style>
 </head>
@@ -71,6 +93,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--B);outline-offs
 <nav><div class="wrap tabs" id="tabs">
 <button type="button" data-v="U">Верх А</button>
 <button type="button" data-v="L">Низ А</button>
+<button type="button" data-v="I">Історія</button>
 </div></nav>
 <main id="app"></main>
 <div class="timer" id="timer" role="status" aria-live="polite">
@@ -103,14 +126,30 @@ L:{t:'Низ А',c:'--B',plate:'20',ex:[
 const REST=120,KEY='friendUL1';
 let st={};try{st=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){st={}}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}};
-const today=new Date().toISOString().slice(0,10);
-if(st.day!==today){st.day=today;st.done={};save()}
-st.w=st.w||{};st.done=st.done||{};st.h=st.h||{};
+const ld=d=>new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+const today=ld(new Date());
+st.w=st.w||{};st.r=st.r||{};st.done=st.done||{};st.sv=st.sv||{};
+if(!st.sess){st.sess=[];const h=st.h||{},by={};Object.keys(h).forEach(id=>(h[id]||[]).forEach(x=>{const k=id[0],key=x.d+'_'+k;(by[key]=by[key]||{id:'s_'+key,kind:'session',date:x.d,day:k,ex:{}}).ex[id]={w:x.w,r:''}}));st.sess=Object.values(by).filter(s=>s.date!==today).sort((a,b)=>a.date<b.date?-1:1);delete st.h;if(st.day===today){}else{st.w={}};save()}
+let sessions=st.sess.slice(),hsel='U0',pendingDel=null;
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dm=d=>d.slice(8,10)+'.'+d.slice(5,7);
+const WD=['Нд','Пн','Вт','Ср','Чт','Пт','Сб'];
+const wdOf=d=>WD[new Date(d+'T12:00:00').getDay()];
+const plf=(n,a,b,c)=>n%10===1&&n%100!==11?a:(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?b:c;
+const draftOf=k=>{const ex={};D[k].ex.forEach((e,i)=>{const id=k+i,w=(st.w[id]||'').trim(),r=(st.r[id]||'').trim();if(w||r)ex[id]={w,r}});return ex};
+const mkSess=(date,k,ex)=>({id:'s_'+date+'_'+k,kind:'session',date,day:k,ex,savedAt:new Date().toISOString()});
+function storeSess(s){sessions=sessions.filter(x=>x.id!==s.id).concat(s).sort((a,b)=>a.date<b.date?-1:1);st.sess=sessions.slice(-400);save()}
+if(st.day!==today){if(st.day)['U','L'].forEach(k=>{const ex=draftOf(k);if(Object.keys(ex).length&&!st.sv[k])storeSess(mkSess(st.day,k,ex))});st.day=today;st.done={};st.w={};st.r={};st.sv={};save()}
+const lastOf=id=>{for(let i=sessions.length-1;i>=0;i--){const s=sessions[i];if(s.date!==today&&s.ex&&s.ex[id])return Object.assign({date:s.date},s.ex[id])}return null};
+const GAP=4;
+function streak(){const ds=[...new Set(sessions.map(s=>s.date))].sort().reverse();if(!ds.length)return 0;
+const days=(a,b)=>Math.round((new Date(a+'T12:00:00')-new Date(b+'T12:00:00'))/864e5);
+if(days(today,ds[0])>GAP)return 0;let n=1;for(let i=1;i<ds.length;i++){if(days(ds[i-1],ds[i])>GAP)break;n++}return n}
+const FL='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c1 4-3 6-3 10a3 3 0 0 0 6 0c0-1-.4-2-1-3 2.6 1.2 4 3.6 4 6a6 6 0 0 1-12 0c0-5 5-7 6-13z" fill="#ff8a1c"/><path d="M12 13c.6 1.6-1.4 2.4-1.4 4a1.4 1.4 0 0 0 2.8 0c0-.5-.2-1-.5-1.4 1.2.6 1.9 1.7 1.9 2.8a2.8 2.8 0 0 1-5.6 0c0-2.4 2.4-3.4 2.8-5.4z" fill="#ffd23f"/></svg>';
+const streakPill=()=>{const n=streak();return n?`<span class="streak">${FL}<b>${n}</b> ${plf(n,'тренування','тренування','тренувань')} поспіль</span>`:`<span class="streak off">${FL}Серія почнеться з першої збереженої сесії</span>`};
 const app=document.getElementById('app');
 const fmt=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
-const dm=d=>d.slice(8,10)+'.'+d.slice(5,7);
-const prevOf=id=>{const h=st.h[id]||[];for(let i=h.length-1;i>=0;i--)if(h[i].d!==today)return h[i];return null};
 const plate=(n,f)=>{const r=40,C=2*Math.PI*r,o=C*(1-f);return `<svg class="plate" viewBox="0 0 100 100" aria-label="Виконано ${Math.round(f*100)}% підходів"><circle cx="50" cy="50" r="48" fill="rgba(0,0,0,.25)"/><circle cx="50" cy="50" r="${r}" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="7"/><circle cx="50" cy="50" r="${r}" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${o}" transform="rotate(-90 50 50)"/><text x="50" y="58" text-anchor="middle">${n}</text></svg>`};
 const keys=(k,i,e)=>{const a=[];e.g.forEach((c,gi)=>{for(let j=0;j<c;j++)a.push(`${k}${i}_${gi}_${j}`)});return a};
 function view(k){
@@ -119,23 +158,35 @@ let tot=0,dn=0;
 d.ex.forEach((e,i)=>keys(k,i,e).forEach(x=>{tot++;if(st.done[x])dn++}));
 const cards=d.ex.map((e,i)=>{const id=k+i,all=keys(k,i,e).every(x=>st.done[x]);
 const multi=e.g.length>1;
-const rows=e.g.map((c,gi)=>{let b='';for(let j=0;j<c;j++){const s=`${id}_${gi}_${j}`;b+=`<button type="button" class="set" data-s="${s}" data-n="${e.n}" aria-pressed="${!!st.done[s]}">${j+1}</button>`}
-if(e.opt&&gi===e.g.length-1){const s=`${id}_opt`;b+=`<button type="button" class="set opt" data-s="${s}" data-n="${e.n}" aria-pressed="${!!st.done[s]}" aria-label="Четвертий підхід, за бажанням">4</button>`}
+const rows=e.g.map((c,gi)=>{let b='';for(let j=0;j<c;j++){const s=`${id}_${gi}_${j}`;b+=`<button type="button" class="set" data-s="${s}" data-n="${esc(e.n)}" aria-pressed="${!!st.done[s]}">${j+1}</button>`}
+if(e.opt&&gi===e.g.length-1){const s=`${id}_opt`;b+=`<button type="button" class="set opt" data-s="${s}" data-n="${esc(e.n)}" aria-pressed="${!!st.done[s]}" aria-label="Четвертий підхід, за бажанням">4</button>`}
 return `<div class="grp">${multi?`<span class="gl">Вправа ${gi+1}</span>`:''}${b}</div>`}).join('');
 const total=e.g.reduce((a,b)=>a+b,0);
-const p=prevOf(id);
+const p=lastOf(id);
 return `<article class="ex${all?' done':''}"><div class="exh"><h3>${e.n}</h3><span class="num">${i+1}/${d.ex.length}</span></div>
 <div class="rx">${e.rx||total+' '+(total<5?'підходи':'підходів')}</div>${rows}
-<div class="bot"><button type="button" class="rest" data-n="${e.n}">⏱ ${fmt(REST)}</button>
-<label class="wt"><input id="w_${id}" inputmode="decimal" data-w="${id}" value="${st.w[id]??''}" aria-label="Вага, ${e.n}"><span>кг</span></label>
-<div class="prev">${p?`Минулого разу: ${p.w} кг · ${dm(p.d)}`:'Вага ще не записана'}</div></div></article>`}).join('');
-return `<section class="band"><div class="wrap bandin"><div><h1>${d.t}</h1><p>${dn} з ${tot} підходів</p></div>${plate(d.plate,tot?dn/tot:0)}</div></section>
+<div class="bot"><button type="button" class="rest" data-n="${esc(e.n)}">⏱ ${fmt(REST)}</button>
+<div class="log"><label class="wt"><input id="w_${id}" data-w="${id}" value="${esc(st.w[id])}" placeholder="${esc(p&&p.w?p.w:'')}" aria-label="Вага сьогодні, ${esc(e.n)}"><span>кг</span></label><label class="wt"><input id="r_${id}" data-r="${id}" value="${esc(st.r[id])}" placeholder="${esc(p&&p.r?p.r:'')}" aria-label="Повтори сьогодні, ${esc(e.n)}"><span>повт.</span></label></div>
+<div class="prev">${p?`Минулого разу (${wdOf(p.date)} ${dm(p.date)}): <b>${esc(p.w||'—')} кг</b>${p.r?' × '+esc(p.r):''}`:'Записів ще немає'}</div></div></article>`}).join('');
+return `<section class="band"><div class="wrap bandin"><div><h1>${d.t}</h1><p>${dn} з ${tot} підходів</p>${streakPill()}</div>${plate(d.plate,tot?dn/tot:0)}</div></section>
 <div class="wrap"><div class="grid">${cards}</div>
+<div class="savebar"><button type="button" class="savebtn" id="sv">${st.sv[k]?'Оновити збережену сесію':'Зберегти сесію'}</button><span id="svmsg">${st.sv[k]?'Збережено сьогодні. Змінив щось — збережи ще раз.':'Впиши вагу й повтори, потім натисни «Зберегти сесію».'}</span></div>
 <div class="foot"><button type="button" class="resetbtn" id="rs">Скинути галочки</button></div></div>`}
+function hist(){
+const opts=['U','L'].map(k=>`<optgroup label="${D[k].t}">${D[k].ex.map((e,i)=>`<option value="${k}${i}"${hsel===k+i?' selected':''}>${esc(e.n)}</option>`).join('')}</optgroup>`).join('');
+const rows=sessions.filter(s=>s.ex&&s.ex[hsel]).slice().reverse().map(s=>`<tr><td>${wdOf(s.date)} ${dm(s.date)}</td><td class="n">${esc(s.ex[hsel].w||'—')}</td><td class="n">${esc(s.ex[hsel].r||'—')}</td></tr>`).join('');
+const list=sessions.slice().reverse().map(s=>{const d=D[s.day];if(!d)return '';const body=d.ex.map((e,i)=>{const x=s.ex[s.day+i];return x?`<tr><td>${esc(e.n)}</td><td class="n">${esc(x.w||'—')}</td><td class="n">${esc(x.r||'—')}</td></tr>`:''}).join('');
+return `<details class="box"><summary><b>${wdOf(s.date)} ${dm(s.date)}</b> · ${d.t}</summary><div class="scroll"><table><thead><tr><th>Вправа</th><th class="n">Вага, кг</th><th class="n">Повтори</th></tr></thead><tbody>${body||'<tr><td colspan="3">Порожньо</td></tr>'}</tbody></table></div><button type="button" class="resetbtn del" data-del="${s.id}">${pendingDel===s.id?'Точно видалити? Тапни ще раз':'Видалити сесію'}</button></details>`}).join('');
+return `<section class="band" style="background:var(--ink);color:var(--bg)"><div class="wrap"><h1>Історія</h1><p>${sessions.length} ${plf(sessions.length,'сесія','сесії','сесій')} на цьому телефоні</p>${streakPill()}</div></section><div class="wrap sec">
+<h2>По вправі</h2><label for="hsel" class="lb">Вправа</label><select id="hsel">${opts}</select>
+<div class="scroll"><table><thead><tr><th>Дата</th><th class="n">Вага, кг</th><th class="n">Повтори</th></tr></thead><tbody>${rows||'<tr><td colspan="3">Для цієї вправи ще немає записів.</td></tr>'}</tbody></table></div>
+<h2>Усі сесії</h2>${list||'<p>Поки порожньо. Після тренування натисни «Зберегти сесію» внизу дня.</p>'}</div>`}
 let cur;
-function show(v){cur=v;document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===v));app.innerHTML=view(v);try{localStorage.setItem(KEY+'tab',v)}catch(e){}}
+function show(v){cur=v;document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===v));
+if(D[v])app.innerHTML=view(v);else{document.documentElement.style.setProperty('--day','var(--ink)');app.innerHTML=hist()}
+try{localStorage.setItem(KEY+'tab',v)}catch(e){}}
 let first='U';try{first=localStorage.getItem(KEY+'tab')||'U'}catch(e){}
-show(D[first]?first:'U');
+show(D[first]||first==='I'?first:'U');
 const tm=document.getElementById('timer'),tt=document.getElementById('tt'),tl=document.getElementById('tl');
 let left=0,iv=null,ac=null,endAt=0;
 const beep=()=>{try{if(!ac)return;[0,.35].forEach(t=>{const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;o.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(.3,ac.currentTime+t);o.start(ac.currentTime+t);o.stop(ac.currentTime+t+.25)})}catch(e){}};
@@ -148,11 +199,14 @@ document.getElementById('tabs').addEventListener('click',e=>{const b=e.target.cl
 app.addEventListener('click',e=>{const s=e.target.closest('.set');
 if(s){const k=s.dataset.s,on=!st.done[k];st.done[k]=on;save();const y=scrollY;show(cur);scrollTo(0,y);if(on)run(s.dataset.n);return}
 const r=e.target.closest('.rest');if(r){run(r.dataset.n);return}
-if(e.target.id==='rs'){st.done={};save();show(cur)}});
-app.addEventListener('input',e=>{const id=e.target.dataset.w;if(!id)return;const v=e.target.value.trim().replace(',','.');st.w[id]=v;
-const h=st.h[id]=st.h[id]||[];const last=h[h.length-1];
-if(v===''){if(last&&last.d===today)h.pop()}else if(last&&last.d===today)last.w=v;else h.push({d:today,w:v});
-if(h.length>60)h.splice(0,h.length-60);save()});
+if(e.target.id==='rs'){st.done={};save();show(cur);return}
+if(e.target.id==='sv'){const k=cur,ex=draftOf(k),m=document.getElementById('svmsg');if(!Object.keys(ex).length){m.textContent='Спочатку впиши хоча б одну вагу.';return}
+storeSess(mkSess(today,k,ex));st.sv[k]=true;save();const y=scrollY;show(cur);scrollTo(0,y);const n=Object.keys(ex).length;document.getElementById('svmsg').textContent='Збережено: '+n+' '+plf(n,'вправа','вправи','вправ')+', '+wdOf(today)+' '+dm(today)+'.';return}
+const dl=e.target.closest('.del');if(dl){const id=dl.dataset.del;if(pendingDel!==id){pendingDel=id;show('I');const x=app.querySelector(`[data-del="${id}"]`);if(x)x.closest('details').open=true;return}
+pendingDel=null;sessions=sessions.filter(s=>s.id!==id);st.sess=sessions.slice();save();show('I')}});
+app.addEventListener('change',e=>{if(e.target.id==='hsel'){hsel=e.target.value;show('I')}});
+app.addEventListener('input',e=>{const w=e.target.dataset.w,r=e.target.dataset.r,id=w||r;if(!id)return;if(w)st.w[w]=e.target.value;else st.r[r]=e.target.value;
+const k=id[0];if(st.sv[k]){st.sv[k]=false;const b=document.getElementById('sv'),m=document.getElementById('svmsg');if(b)b.textContent='Зберегти зміни';if(m)m.textContent='Є незбережені зміни.'}save()});
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 }
 </script>

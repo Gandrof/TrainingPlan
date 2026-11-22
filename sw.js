@@ -1,4 +1,4 @@
-const CACHE = 'program-v1';
+const CACHE = 'program-v2';
 const FILES = ['./', 'index.html', 'manifest.json', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -13,13 +13,26 @@ self.addEventListener('activate', e => {
   );
 });
 
+// The page itself: try the network first so updates arrive, fall back to the saved copy offline.
+// Everything else (icons, manifest): the saved copy first.
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  const isPage = e.request.mode === 'navigate' || e.request.destination === 'document';
+  if (isPage) {
+    e.respondWith(
+      fetch(e.request).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put('index.html', copy));
+        return res;
+      }).catch(() => caches.match('index.html').then(r => r || caches.match('./')))
+    );
+    return;
+  }
   e.respondWith(
     caches.match(e.request, { ignoreSearch: true }).then(hit => hit || fetch(e.request).then(res => {
       const copy = res.clone();
       caches.open(CACHE).then(c => c.put(e.request, copy));
       return res;
-    }).catch(() => caches.match('index.html')))
+    }))
   );
 });
