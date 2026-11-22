@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Програма">
+<meta name="theme-color" content="#111214">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Верх А · Низ А</title>
+<style>
+/* VOICE everyday gym tool, one hand, between sets on an iPhone
+   IDEA competition plates: Верх А is the red 25, Низ А the blue 20
+   PICTURE the session itself: day band with a progress plate, then exercise cards with set taps
+   COLOUR white / near-black ground, plate red, plate blue, iron ink
+   TYPE system font (works offline)
+   LAYOUT phone: tabs, band, cards, sticky rest timer; wider: cards in two columns */
+:root{color-scheme:light dark;--bg:#ffffff;--ink:#141518;--mut:#5c5f66;--line:#e3e4e8;--card:#f6f6f8;--A:#d7261e;--B:#1f56d6;--day:var(--A)}
+@media(prefers-color-scheme:dark){:root{--bg:#111214;--ink:#eeeef0;--mut:#a3a6ad;--line:#2a2c31;--card:#1a1b1f}}
+*{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,system-ui,"Segoe UI",sans-serif;overflow-x:clip;padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));-webkit-text-size-adjust:100%}
+h1,h3{line-height:1.05;letter-spacing:-.01em;margin:0}
+.wrap{max-width:1100px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+nav{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top,0px)}
+.tabs{display:flex;gap:8px;padding-top:10px;padding-bottom:10px}
+.tabs button{flex:1;font:700 17px -apple-system,system-ui,sans-serif;min-height:48px;border-radius:24px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.tabs button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--B);outline-offset:2px}
+.band{background:var(--day);color:#fff;padding:20px 0}
+.bandin{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center}
+.band h1{font-size:44px;font-weight:800}
+.band p{margin:6px 0 0;font-size:16px}
+.plate{width:80px;height:80px}
+.plate text{font:800 22px -apple-system,system-ui,sans-serif;fill:#fff}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding:16px 0}
+@media(min-width:820px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.ex{background:var(--card);border-radius:14px;padding:14px;border-left:6px solid var(--day)}
+.ex.done{opacity:.55}
+.exh{display:flex;gap:10px;align-items:baseline;justify-content:space-between}
+.ex h3{font-size:22px;font-weight:800}
+.num{font-weight:700;font-size:14px;color:var(--mut);white-space:nowrap}
+.rx{font-weight:600;color:var(--mut);margin:2px 0 10px}
+.grp{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+.grp .gl{font-weight:600;font-size:15px;min-width:76px}
+.set{min-width:48px;min-height:48px;border-radius:12px;border:2px solid var(--day);background:transparent;color:var(--ink);font:700 16px -apple-system,system-ui,sans-serif;cursor:pointer;padding:0 8px}
+.set.opt{border-style:dashed}
+.set[aria-pressed=true]{background:var(--day);color:#fff;border-style:solid}
+.bot{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:4px}
+.wt{display:flex;align-items:center;gap:6px;margin-left:auto}
+.wt input{width:88px;font:600 16px -apple-system,system-ui,sans-serif;min-height:48px;padding:0 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);text-align:right;-webkit-appearance:none}
+.wt span{color:var(--mut);font-size:14px}
+.prev{width:100%;color:var(--mut);font-size:14px;text-align:right}
+.rest{min-height:48px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:600 16px -apple-system,system-ui,sans-serif;padding:0 14px;cursor:pointer;white-space:nowrap}
+.foot{padding:4px 0 24px}
+.resetbtn{min-height:48px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 16px -apple-system,system-ui,sans-serif;padding:0 16px;cursor:pointer}
+.timer{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--ink);color:var(--bg);padding:10px max(16px,env(safe-area-inset-left,0px)) calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:10px;align-items:center;transform:translateY(110%);transition:transform .25s}
+.timer.on{transform:none}
+.timer b{font:800 36px -apple-system,system-ui,sans-serif;font-variant-numeric:tabular-nums;min-width:92px}
+.timer .lbl{flex:1;font-size:15px;opacity:.85}
+.timer button{min-height:48px;min-width:60px;border-radius:12px;border:0;font:700 16px -apple-system,system-ui,sans-serif;cursor:pointer;background:var(--bg);color:var(--ink)}
+.timer.end{background:var(--A);color:#fff}
+@media(max-width:600px){.wt{margin-left:0}.prev{text-align:left}}
+@media(prefers-reduced-motion:reduce){.timer{transition:none}}
+</style>
+</head>
+<body>
+<nav><div class="wrap tabs" id="tabs">
+<button type="button" data-v="U">Верх А</button>
+<button type="button" data-v="L">Низ А</button>
+</div></nav>
+<main id="app"></main>
+<div class="timer" id="timer" role="status" aria-live="polite">
+<b id="tt">2:00</b><span class="lbl" id="tl">Відпочинок</span>
+<button id="tplus" type="button">+30 с</button><button id="tstop" type="button">Стоп</button>
+</div>
+<script>
+{
+const D={
+U:{t:'Верх А',c:'--A',plate:'25',ex:[
+{n:'Тяга верхнього блоку',g:[3]},
+{n:'Тяга Т-грифа',g:[3]},
+{n:'Тяга гантелі однією рукою',g:[2]},
+{n:'Жим на похилій лаві / верх грудей',g:[3]},
+{n:'Метелик',g:[3]},
+{n:'Кросовер на нижню частину грудей',g:[2]},
+{n:'Гантелі біцепс',g:[3]},
+{n:'Біцепс: молоткові згинання',g:[2]},
+{n:'Трицепс: блок',g:[3]},
+{n:'Трицепс: по одній',g:[2]}]},
+L:{t:'Низ А',c:'--B',plate:'20',ex:[
+{n:'Гак-присідання',g:[3]},
+{n:'Румунська тяга',g:[3]},
+{n:'Згинання ніг',g:[2]},
+{n:'Розгинання ніг',g:[2]},
+{n:'Прес молитва',g:[3],opt:1,rx:'3–4 підходи'},
+{n:'Середня дельта: 3 вправи',g:[2,2,2],rx:'по 2 підходи'},
+{n:'Задня дельта: 2 вправи',g:[3,3],rx:'по 3 підходи'}]}
+};
+const REST=120,KEY='friendUL1';
+let st={};try{st=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){st={}}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}};
+const today=new Date().toISOString().slice(0,10);
+if(st.day!==today){st.day=today;st.done={};save()}
+st.w=st.w||{};st.done=st.done||{};st.h=st.h||{};
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+const app=document.getElementById('app');
+const fmt=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+const dm=d=>d.slice(8,10)+'.'+d.slice(5,7);
+const prevOf=id=>{const h=st.h[id]||[];for(let i=h.length-1;i>=0;i--)if(h[i].d!==today)return h[i];return null};
+const plate=(n,f)=>{const r=40,C=2*Math.PI*r,o=C*(1-f);return `<svg class="plate" viewBox="0 0 100 100" aria-label="Виконано ${Math.round(f*100)}% підходів"><circle cx="50" cy="50" r="48" fill="rgba(0,0,0,.25)"/><circle cx="50" cy="50" r="${r}" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="7"/><circle cx="50" cy="50" r="${r}" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${o}" transform="rotate(-90 50 50)"/><text x="50" y="58" text-anchor="middle">${n}</text></svg>`};
+const keys=(k,i,e)=>{const a=[];e.g.forEach((c,gi)=>{for(let j=0;j<c;j++)a.push(`${k}${i}_${gi}_${j}`)});return a};
+function view(k){
+const d=D[k];document.documentElement.style.setProperty('--day',`var(${d.c})`);
+let tot=0,dn=0;
+d.ex.forEach((e,i)=>keys(k,i,e).forEach(x=>{tot++;if(st.done[x])dn++}));
+const cards=d.ex.map((e,i)=>{const id=k+i,all=keys(k,i,e).every(x=>st.done[x]);
+const multi=e.g.length>1;
+const rows=e.g.map((c,gi)=>{let b='';for(let j=0;j<c;j++){const s=`${id}_${gi}_${j}`;b+=`<button type="button" class="set" data-s="${s}" data-n="${e.n}" aria-pressed="${!!st.done[s]}">${j+1}</button>`}
+if(e.opt&&gi===e.g.length-1){const s=`${id}_opt`;b+=`<button type="button" class="set opt" data-s="${s}" data-n="${e.n}" aria-pressed="${!!st.done[s]}" aria-label="Четвертий підхід, за бажанням">4</button>`}
+return `<div class="grp">${multi?`<span class="gl">Вправа ${gi+1}</span>`:''}${b}</div>`}).join('');
+const total=e.g.reduce((a,b)=>a+b,0);
+const p=prevOf(id);
+return `<article class="ex${all?' done':''}"><div class="exh"><h3>${e.n}</h3><span class="num">${i+1}/${d.ex.length}</span></div>
+<div class="rx">${e.rx||total+' '+(total<5?'підходи':'підходів')}</div>${rows}
+<div class="bot"><button type="button" class="rest" data-n="${e.n}">⏱ ${fmt(REST)}</button>
+<label class="wt"><input id="w_${id}" inputmode="decimal" data-w="${id}" value="${st.w[id]??''}" aria-label="Вага, ${e.n}"><span>кг</span></label>
+<div class="prev">${p?`Минулого разу: ${p.w} кг · ${dm(p.d)}`:'Вага ще не записана'}</div></div></article>`}).join('');
+return `<section class="band"><div class="wrap bandin"><div><h1>${d.t}</h1><p>${dn} з ${tot} підходів</p></div>${plate(d.plate,tot?dn/tot:0)}</div></section>
+<div class="wrap"><div class="grid">${cards}</div>
+<div class="foot"><button type="button" class="resetbtn" id="rs">Скинути галочки</button></div></div>`}
+let cur;
+function show(v){cur=v;document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===v));app.innerHTML=view(v);try{localStorage.setItem(KEY+'tab',v)}catch(e){}}
+let first='U';try{first=localStorage.getItem(KEY+'tab')||'U'}catch(e){}
+show(D[first]?first:'U');
+const tm=document.getElementById('timer'),tt=document.getElementById('tt'),tl=document.getElementById('tl');
+let left=0,iv=null,ac=null,endAt=0;
+const beep=()=>{try{if(!ac)return;[0,.35].forEach(t=>{const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;o.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(.3,ac.currentTime+t);o.start(ac.currentTime+t);o.stop(ac.currentTime+t+.25)})}catch(e){}};
+const tick=()=>{left=Math.round((endAt-Date.now())/1000);tt.textContent=fmt(Math.max(left,0));if(left<=0){clearInterval(iv);iv=null;tm.classList.add('end');tl.textContent='Час! Наступний підхід';beep()}};
+const run=n=>{try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume&&ac.resume()}catch(e){}
+endAt=Date.now()+REST*1000;left=REST;tt.textContent=fmt(REST);tl.textContent=n;tm.classList.add('on');tm.classList.remove('end');clearInterval(iv);iv=setInterval(tick,500)};
+document.getElementById('tplus').addEventListener('click',()=>{if(!iv){endAt=Date.now();tm.classList.remove('end');iv=setInterval(tick,500)}endAt+=30000;tick()});
+document.getElementById('tstop').addEventListener('click',()=>{clearInterval(iv);iv=null;tm.classList.remove('on','end')});
+document.getElementById('tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b){show(b.dataset.v);scrollTo(0,0)}});
+app.addEventListener('click',e=>{const s=e.target.closest('.set');
+if(s){const k=s.dataset.s,on=!st.done[k];st.done[k]=on;save();const y=scrollY;show(cur);scrollTo(0,y);if(on)run(s.dataset.n);return}
+const r=e.target.closest('.rest');if(r){run(r.dataset.n);return}
+if(e.target.id==='rs'){st.done={};save();show(cur)}});
+app.addEventListener('input',e=>{const id=e.target.dataset.w;if(!id)return;const v=e.target.value.trim().replace(',','.');st.w[id]=v;
+const h=st.h[id]=st.h[id]||[];const last=h[h.length-1];
+if(v===''){if(last&&last.d===today)h.pop()}else if(last&&last.d===today)last.w=v;else h.push({d:today,w:v});
+if(h.length>60)h.splice(0,h.length-60);save()});
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
